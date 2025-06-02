@@ -1,0 +1,5 @@
+Starting DuckDB basic test at Mon Jun  2 17:58:29 CDT 2025
+Running on node: qnode0024
+Loaded modules
+Python version: Python 3.10.14
+Requirement already satisfied: duckdb in /gpfs/home/exy4679/.local/lib/python3.10/site-packages (1.3.0)
