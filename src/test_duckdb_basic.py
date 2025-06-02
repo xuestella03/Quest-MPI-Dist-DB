@@ -6,6 +6,7 @@ import duckdb
 import os
 import time
 import sys
+from datetime import datetime
 
 
 def test_duckdb_installation():
@@ -191,6 +192,8 @@ def test_csv_operations():
 
 
 def main():
+    start = datetime.now()
+    print(f"Starting time: {start}")
     print("=" * 60)
     print("DuckDB Basic Functionality Test on Quest")
     print("=" * 60)
@@ -230,11 +233,18 @@ def main():
 
     print(f"\\nOverall: {passed}/{len(tests)} tests passed")
 
+    end = datetime.now()
+
     if passed == len(tests):
         print("✓ All tests passed! DuckDB is ready for distributed operations.")
+        
+        print(f"Ending time: {end}")
+        print(f"Time elapsed: {end - start}")
         return 0
     else:
         print("✗ Some tests failed. Check the output above.")
+        print(f"Ending time: {end}")
+        print(f"Time elapsed: {end - start}")
         return 1
 
 

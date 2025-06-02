@@ -15,14 +15,13 @@ echo "Running on node: $(hostname)"
 
 # Load required modules
 # module load python/3.8.10
-module load mamba/24.3.0
 echo "Loaded modules"
 echo "Python version: $(python3 --version)"
 
 # Install DuckDB if not already installed
-pip install --user duckdb
+# pip install --user duckdb
 
 # Run the basic test
-python3 -u src/test_duckdb_basic.py
+python3 -u src/test_duckdb_file_upload.py
 
 echo "Basic test completed at $(date)"
