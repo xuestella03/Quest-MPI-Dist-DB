@@ -10,79 +10,6 @@ import time
 import sys
 from datetime import datetime
 
-# def partition_and_distribute_customer_and_orders(comm, rank, size):
-#     """
-#     Node 0 loads the TPC-H data, partitions the customer and orders tables based on custkey % size
-#     Distributes data partitions to all nodes.
-
-#     Return the local duckdb connection.
-
-#     Node 0 loads the TPC-H data, partitions the tables based on custkey % size
-#     Distributes data partitions to all nodes.
-#     """
-#     db_path = 'data/coordinator/full_data/whole_tpch_0.1.duckdb'
-#     local_db_path_c = f'/tmp/customer_node_{rank}.duckdb'
-#     local_parquet_path_c = f'/tmp/customer_local.parquet'
-#     local_db_path_o = f'/tmp/orders_node_{rank}.duckdb'
-#     local_parquet_path_o = f'/tmp/orders_local.parquet'
-
-#     if rank == 0:
-#         # coordinator node
-#         print("Rank 0: Partitioning and distributing into Parquet files")
-
-#         con = duckdb.connect(db_path)
-
-#         for i in range(size):
-#             # loop over the nodes
-#             part_path_c = f'/tmp/customer_part_{i}.parquet'
-#             part_path_o = f'/tmp/orders_part_{i}.parquet'
-#             con.execute(f"""
-#             COPY (SELECT * FROM customer where c_custkey % {size} = {i}) 
-#             TO '{part_path_c}' (FORMAT 'parquet')""")
-            
-#             con.execute(f"""COPY (SELECT * FROM orders where o_custkey % {size} = {i}) 
-#             TO '{part_path_o}' (FORMAT 'parquet')""")
-
-#             if i == 0:
-#                 # don't need to send to self
-#                 continue
-
-#             # read file and send bytes
-#             with open(part_path_c, 'rb') as f:
-#                 file_bytes_c = f.read()
-#             with open(part_path_o, 'rb') as f:
-#                 file_bytes_o = f.read()
-
-#             comm.send(file_bytes_c, dest=i, tag=77)
-#             comm.send(file_bytes_o, dest=i, tag=77)
-#             print(f"Rank 0: Sent partition {i} to rank {i}")
-        
-#         con.close()
-    
-#     else:
-#         # receive the parquet file bytes
-#         print(f"Rank {rank}: Waiting to receive Parquet file...")
-#         file_bytes = comm.recv(source=0, tag=77)
-
-#         # Save to local file
-#         with open(local_parquet_path, 'wb') as f:
-#             f.write(file_bytes)
-
-#         print(f"Rank {rank}: Received and wrote Parquet file.")
-
-#     # Load local Parquet file into DuckDB for each rank
-#     con = duckdb.connect(local_db_path)
-#     if rank == 0:
-#         local_parquet_path = '/tmp/customer_part_0.parquet'
-
-#     con.execute("""
-#         CREATE TABLE customer AS
-#         SELECT * FROM read_parquet(?)
-#     """, (local_parquet_path,))
-
-#     count = con.execute("SELECT COUNT(*) FROM customer").fetchone()[0]
-#     print(f"Rank {rank}: Loaded {count} customer records into local DuckDB.")
-
 def partition_and_distribute_customer_and_orders(comm, rank, size):
     """
     Node 0 loads the TPC-H data, partitions the customer and orders tables based on c_custkey % size,
@@ -231,7 +158,21 @@ def cleanup(rank):
     """
     Clean up temporary files (local db? join intermediate results)
     """
-    pass 
+    temp_files = [
+        f'/tmp/customer_part_{rank}.parquet',
+        f'/tmp/orders_part_{rank}.parquet',
+        f'/tmp/customer_local_{rank}.parquet', 
+        f'/tmp/orders_local_{rank}.parquet',
+        f'/tmp/local_results_{rank}.parquet',
+        f'/tmp/node_{rank}.duckdb'
+    ]
+    
+    for file_path in temp_files:
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except:
+            pass
 
 def main():
     # Initialize MPI
@@ -239,25 +180,40 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
+    total_start_time = datetime.now()
+
     if rank == 0:
         print("=" * 60)
         print(f"Distributed join customer and orders tables on {size} nodes")
         print("=" * 60)
 
     # partition the customer table and the orders table
+    partition_start_time = datetime.now()
     conn = partition_and_distribute_customer_and_orders(comm, rank, size)
 
     # synchronize all processes after partitioning and distributing
     comm.Barrier()
+    partition_time = datetime.now() - partition_start_time 
 
     # perform local join
+    local_join_start_time = datetime.now()
     local_results = perform_local_join(rank, conn)
+    local_join_time = datetime.now() - local_join_start_time
 
     # collect results
+    collection_start_time = datetime.now()
     collect_results(comm, rank, size, local_results)
+    collection_time = datetime.now() - collection_start_time
 
     # cleanup
-    
+    cleanup(rank)
+
+    total_time = datetime.now() - total_start_time 
+    if rank == 0:
+        print(f"Total execution time: {total_time.total_seconds()} seconds")
+        print(f"Partitioning time: {partition_time.total_seconds()} seconds")
+        print(f"Local join time: {local_join_time.total_seconds()} seconds")
+        print(f"Collection time: {collection_time.total_seconds()} seconds")
 
 if __name__ == "__main__":
     main()
