@@ -8,3 +8,7 @@
 - Try to track local join time (adding in each node and gather?)
 - Clean up print statements
 - Remove pip install
+- Compare file transfer methods (parquet, csv, raw tuple data line by line)
+- Use pandas to collect results
+
+*Will remove older verisons of merge*

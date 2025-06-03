@@ -9,6 +9,7 @@ import os
 import time
 import sys
 from datetime import datetime
+from utils import collect_utils
 
 def partition_and_distribute_customer_and_orders(comm, rank, size):
     """
@@ -326,6 +327,7 @@ def cleanup(rank):
             pass
 
 def main():
+
     # Initialize MPI
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -355,9 +357,10 @@ def main():
     collection_start_time = datetime.now()
     # collect_results(comm, rank, size, local_results)
     # collect_results_optimized(comm, rank, size, local_results)
-    collect_results_parquet_streaming(comm, rank, size, conn)
-    collection_time = datetime.now() - collection_start_time
-
+    # collect_results_parquet_streaming(comm, rank, size, conn)
+    
+    local_join_time, collection_time = collect_utils.collect_results_parquet_streaming(comm, rank, size, conn)
+    collection_time_2 = datetime.now() - collection_start_time
     # cleanup
     cleanup(rank)
 
@@ -365,8 +368,9 @@ def main():
     if rank == 0:
         print(f"Total execution time: {total_time.total_seconds()} seconds")
         print(f"Partitioning time: {partition_time.total_seconds()} seconds")
-        # print(f"Local join time: {local_join_time.total_seconds()} seconds")
+        print(f"Local join time: {local_join_time.total_seconds()} seconds")
         print(f"Collection time: {collection_time.total_seconds()} seconds")
+        print(f"Collection time 2: {collection_time_2.total_seconds()} seconds")
 
 if __name__ == "__main__":
     main()

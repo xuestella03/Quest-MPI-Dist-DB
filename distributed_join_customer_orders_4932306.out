@@ -1,0 +1,38 @@
+Starting distributed join for customer and orders tables
+Job ID: 4932306
+Running on 4 nodes with 4 total tasks
+Successfully loaded modules and installed packages
+hello
+Rank 2: Receiving customer and orders Parquet files...
+hello
+hello
+Rank 1: Receiving customer and orders Parquet files...
+Rank 3: Receiving customer and orders Parquet files...
+hello
+============================================================
+Distributed join customer and orders tables on 4 nodes
+============================================================
+Rank 0: Partitioning and distributing customer and orders Parquet files
+Rank 0: Sent customer and orders partitions to rank 1
+Rank 1: Received and saved Parquet files
+Rank 0: Sent customer and orders partitions to rank 2
+Rank 2: Received and saved Parquet files
+Rank 0: Sent customer and orders partitions to rank 3
+Rank 3: Received and saved Parquet files
+Rank 2: Loaded 3750 customer and 37791 orders records into local DB
+Rank 3: Loaded 3750 customer and 37428 orders records into local DB
+Rank 0: Loaded 3750 customer and 37434 orders records into local DB
+Rank 1: Loaded 3750 customer and 37347 orders records into local DB
+Rank 3: Query completed in 0:00:00.009339, wrote 577036 bytes
+Rank 1: Query completed in 0:00:00.009389, wrote 575157 bytes
+Rank 2: Query completed in 0:00:00.009408, wrote 581712 bytes
+Rank 0: Query completed in 0:00:00.011575, wrote 577045 bytes
+Coordinator collecting Parquet files...
+Receiving Parquet from rank 1...
+Receiving Parquet from rank 2...
+Receiving Parquet from rank 3...
+Collection completed in 0:00:00.080125, total records: 150000
+Total execution time: 2.375823 seconds
+Partitioning time: 2.28057 seconds
+Collection time: 0.094807 seconds
+Distributed join for customer and orders tables finished
