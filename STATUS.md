@@ -7,4 +7,4 @@
 ## To-Do
 - Try to track local join time (adding in each node and gather?)
 - Clean up print statements
-- Remove module loading and pip install
+- Remove pip install
