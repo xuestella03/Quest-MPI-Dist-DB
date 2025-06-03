@@ -1,20 +1,26 @@
 query 1
 
-4 nodes
-38: 
-total time: 1.722319
-partition time: 1.579408
-max local join time: 0.017830
-collection time: 0.096483
 
-50
-total time: 1.835034
-partition time: 1.688573
-max local join time: 0.018020
-collection time: 0.099673
+2 nodes
+100
+total time: 1.129395
+partition time: 0.999377
+max local join time: 0.025715
+collection_time 0.098890
+
+
+4 nodes
 
 100
 total time: 1.694072
 partition time: 1.549526
 max local join time: 0.018069
 collection time: 0.097622
+
+
+8 nodes
+100
+total time: 1.754642
+partition time: 1.606658
+max local join time: 0.011272
+collection time: 0.130829
