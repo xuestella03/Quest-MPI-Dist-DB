@@ -158,31 +158,28 @@ def partition_and_distribute_customer_and_orders_parquet(comm, rank, size):
 
     return con
 
+from mpi4py import MPI
+import duckdb
+import os
+from datetime import datetime
+
 def partition_and_distribute_customer_and_orders_streaming_parquet(comm, rank, size):
-    """
-    Version 1: Asynchronous sends with pipelining
-    Major improvements:
-    - Non-blocking sends to overlap communication
-    - Memory-mapped file reading for efficiency
-    - Pipelined processing (partition while sending previous)
-    """
     db_path = 'data/coordinator/full_data/whole_tpch_0.1.duckdb'
     local_db_path = f'/tmp/node_{rank}.duckdb'
     local_parquet_path_c = '/tmp/customer_local.parquet'
     local_parquet_path_o = '/tmp/orders_local.parquet'
-    
+
     if rank == 0:
         print("Rank 0: Starting optimized partitioning with async sends...")
         start_time = datetime.now()
-        
+
         con = duckdb.connect(db_path)
-        pending_sends = []
-        
+        pending_reqs = []
+
         for i in range(size):
             part_path_c = f'/tmp/customer_part_{i}.parquet'
             part_path_o = f'/tmp/orders_part_{i}.parquet'
-            
-            # Generate partitions
+
             con.execute(f"""
                 COPY (
                     SELECT * FROM customer WHERE c_custkey % {size} = {i}
@@ -193,62 +190,254 @@ def partition_and_distribute_customer_and_orders_streaming_parquet(comm, rank, s
                     SELECT * FROM orders WHERE o_custkey % {size} = {i}
                 ) TO '{part_path_o}' (FORMAT 'parquet')
             """)
-            
-            if i == 0:
-                continue
-            
-            # Use memory-mapped files for efficient reading
+
             with open(part_path_c, 'rb') as f:
-                # with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm_c:
-                #     file_bytes_c = mm_c.read()
                 file_bytes_c = f.read()
-                req_c = comm.isend(file_bytes_c, dest=i, tag=100)
-            
             with open(part_path_o, 'rb') as f:
-                # with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm_o:
-                #     file_bytes_o = mm_o.read()
                 file_bytes_o = f.read()
-                req_o = comm.isend(file_bytes_o, dest=i, tag=101)
-            
-            # Non-blocking sends
-            # req_c = comm.isend(file_bytes_c, dest=i, tag=100)
-            # req_c.wait()
-            # req_o = comm.isend(file_bytes_o, dest=i, tag=101)
-            # req_o.wait()
-            
-            pending_sends.extend([req_c, req_o])
-            
-            # Clean up partition files immediately after reading
-            os.remove(part_path_c)
-            os.remove(part_path_o)
-        
-        # Wait for all sends to complete
-        MPI.Request.waitall(pending_sends)
+
+            if i != 0:
+                # First, send sizes
+                size_c = len(file_bytes_c)
+                size_o = len(file_bytes_o)
+                req_size_c = comm.isend(size_c, dest=i, tag=200)
+                req_size_o = comm.isend(size_o, dest=i, tag=201)
+
+                # Then send actual data
+                req_data_c = comm.Isend([file_bytes_c, MPI.BYTE], dest=i, tag=100)
+                req_data_o = comm.Isend([file_bytes_o, MPI.BYTE], dest=i, tag=101)
+
+                pending_reqs.extend([req_size_c, req_size_o, req_data_c, req_data_o])
+
+            # Clean up local partition files
+            if i != 0:
+                os.remove(part_path_c)
+                os.remove(part_path_o)
+
+        MPI.Request.Waitall(pending_reqs)
         con.close()
-        
+
         elapsed = datetime.now() - start_time
         print(f"Rank 0: Partitioning and distribution completed in {elapsed}")
-    
+
     else:
-        # Non-blocking receives
-        req_c = comm.irecv(source=0, tag=100)
-        req_o = comm.irecv(source=0, tag=101)
-        
-        file_bytes_c = req_c.wait()
-        file_bytes_o = req_o.wait()
-        
+        # First receive sizes
+        req_size_c = comm.irecv(source=0, tag=200)
+        req_size_o = comm.irecv(source=0, tag=201)
+        size_c = req_size_c.wait()
+        size_o = req_size_o.wait()
+
+        # Allocate buffers
+        file_bytes_c = bytearray(size_c)
+        file_bytes_o = bytearray(size_o)
+
+        # Then receive actual data
+        req_data_c = comm.Irecv([file_bytes_c, MPI.BYTE], source=0, tag=100)
+        req_data_o = comm.Irecv([file_bytes_o, MPI.BYTE], source=0, tag=101)
+
+        req_data_c.Wait()
+        req_data_o.Wait()
+
         with open(local_parquet_path_c, 'wb') as f:
             f.write(file_bytes_c)
         with open(local_parquet_path_o, 'wb') as f:
             f.write(file_bytes_o)
-    
+
     # Load into local DuckDB
     if rank == 0:
         local_parquet_path_c = f'/tmp/customer_part_{rank}.parquet'
         local_parquet_path_o = f'/tmp/orders_part_{rank}.parquet'
-    
+
     con = duckdb.connect(local_db_path)
     con.execute("CREATE TABLE customer AS SELECT * FROM read_parquet(?)", (local_parquet_path_c,))
     con.execute("CREATE TABLE orders AS SELECT * FROM read_parquet(?)", (local_parquet_path_o,))
-    
+
     return con
+
+def partition_and_distribute_customer_and_orders_streaming_parquet_mmap(comm, rank, size):
+    db_path = 'data/coordinator/full_data/whole_tpch_0.1.duckdb'
+    local_db_path = f'/tmp/node_{rank}.duckdb'
+    local_parquet_path_c = '/tmp/customer_local.parquet'
+    local_parquet_path_o = '/tmp/orders_local.parquet'
+
+    if rank == 0:
+        print("Rank 0: Starting optimized partitioning with async sends...")
+        start_time = datetime.now()
+
+        con = duckdb.connect(db_path)
+        pending_reqs = []
+
+        for i in range(size):
+            part_path_c = f'/tmp/customer_part_{i}.parquet'
+            part_path_o = f'/tmp/orders_part_{i}.parquet'
+
+            con.execute(f"""
+                COPY (
+                    SELECT * FROM customer WHERE c_custkey % {size} = {i}
+                ) TO '{part_path_c}' (FORMAT 'parquet')
+            """)
+            con.execute(f"""
+                COPY (
+                    SELECT * FROM orders WHERE o_custkey % {size} = {i}
+                ) TO '{part_path_o}' (FORMAT 'parquet')
+            """)
+
+            with open(part_path_c, 'rb') as f:
+                with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm_c:
+                    file_bytes_c = mm_c.read()
+            with open(part_path_o, 'rb') as f:
+                with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm_o:
+                    file_bytes_o = mm_o.read()
+
+            if i != 0:
+                # First, send sizes
+                size_c = len(file_bytes_c)
+                size_o = len(file_bytes_o)
+                req_size_c = comm.isend(size_c, dest=i, tag=200)
+                req_size_o = comm.isend(size_o, dest=i, tag=201)
+
+                # Then send actual data
+                req_data_c = comm.Isend([file_bytes_c, MPI.BYTE], dest=i, tag=100)
+                req_data_o = comm.Isend([file_bytes_o, MPI.BYTE], dest=i, tag=101)
+
+                pending_reqs.extend([req_size_c, req_size_o, req_data_c, req_data_o])
+
+            # Clean up local partition files
+            if i != 0:
+                os.remove(part_path_c)
+                os.remove(part_path_o)
+
+        MPI.Request.Waitall(pending_reqs)
+        con.close()
+
+        elapsed = datetime.now() - start_time
+        print(f"Rank 0: Partitioning and distribution completed in {elapsed}")
+
+    else:
+        # First receive sizes
+        req_size_c = comm.irecv(source=0, tag=200)
+        req_size_o = comm.irecv(source=0, tag=201)
+        size_c = req_size_c.wait()
+        size_o = req_size_o.wait()
+
+        # Allocate buffers
+        file_bytes_c = bytearray(size_c)
+        file_bytes_o = bytearray(size_o)
+
+        # Then receive actual data
+        req_data_c = comm.Irecv([file_bytes_c, MPI.BYTE], source=0, tag=100)
+        req_data_o = comm.Irecv([file_bytes_o, MPI.BYTE], source=0, tag=101)
+
+        req_data_c.Wait()
+        req_data_o.Wait()
+
+        with open(local_parquet_path_c, 'wb') as f:
+            f.write(file_bytes_c)
+        with open(local_parquet_path_o, 'wb') as f:
+            f.write(file_bytes_o)
+
+    # Load into local DuckDB
+    if rank == 0:
+        local_parquet_path_c = f'/tmp/customer_part_{rank}.parquet'
+        local_parquet_path_o = f'/tmp/orders_part_{rank}.parquet'
+
+    con = duckdb.connect(local_db_path)
+    con.execute("CREATE TABLE customer AS SELECT * FROM read_parquet(?)", (local_parquet_path_c,))
+    con.execute("CREATE TABLE orders AS SELECT * FROM read_parquet(?)", (local_parquet_path_o,))
+
+    return con
+
+# def partition_and_distribute_customer_and_orders_streaming_parquet(comm, rank, size):
+#     """
+#     Version 1: Asynchronous sends with pipelining
+#     Major improvements:
+#     - Non-blocking sends to overlap communication
+#     - Memory-mapped file reading for efficiency
+#     - Pipelined processing (partition while sending previous)
+#     """
+#     db_path = 'data/coordinator/full_data/whole_tpch_0.1.duckdb'
+#     local_db_path = f'/tmp/node_{rank}.duckdb'
+#     local_parquet_path_c = '/tmp/customer_local.parquet'
+#     local_parquet_path_o = '/tmp/orders_local.parquet'
+    
+#     if rank == 0:
+#         print("Rank 0: Starting optimized partitioning with async sends...")
+#         start_time = datetime.now()
+        
+#         con = duckdb.connect(db_path)
+#         pending_sends = []
+        
+#         for i in range(size):
+#             part_path_c = f'/tmp/customer_part_{i}.parquet'
+#             part_path_o = f'/tmp/orders_part_{i}.parquet'
+            
+#             # Generate partitions
+#             con.execute(f"""
+#                 COPY (
+#                     SELECT * FROM customer WHERE c_custkey % {size} = {i}
+#                 ) TO '{part_path_c}' (FORMAT 'parquet')
+#             """)
+#             con.execute(f"""
+#                 COPY (
+#                     SELECT * FROM orders WHERE o_custkey % {size} = {i}
+#                 ) TO '{part_path_o}' (FORMAT 'parquet')
+#             """)
+            
+#             if i == 0:
+#                 continue
+            
+#             # Use memory-mapped files for efficient reading
+#             with open(part_path_c, 'rb') as f:
+#                 # with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm_c:
+#                 #     file_bytes_c = mm_c.read()
+#                 file_bytes_c = f.read()
+#                 req_c = comm.isend(file_bytes_c, dest=i, tag=100)
+            
+#             with open(part_path_o, 'rb') as f:
+#                 # with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm_o:
+#                 #     file_bytes_o = mm_o.read()
+#                 file_bytes_o = f.read()
+#                 req_o = comm.isend(file_bytes_o, dest=i, tag=101)
+            
+#             # Non-blocking sends
+#             # req_c = comm.isend(file_bytes_c, dest=i, tag=100)
+#             # req_c.wait()
+#             # req_o = comm.isend(file_bytes_o, dest=i, tag=101)
+#             # req_o.wait()
+            
+#             pending_sends.extend([req_c, req_o])
+            
+#             # Clean up partition files immediately after reading
+#             os.remove(part_path_c)
+#             os.remove(part_path_o)
+        
+#         # Wait for all sends to complete
+#         MPI.Request.waitall(pending_sends)
+#         con.close()
+        
+#         elapsed = datetime.now() - start_time
+#         print(f"Rank 0: Partitioning and distribution completed in {elapsed}")
+    
+#     else:
+#         # Non-blocking receives
+#         req_c = comm.irecv(source=0, tag=100)
+#         req_o = comm.irecv(source=0, tag=101)
+        
+#         file_bytes_c = req_c.wait()
+#         file_bytes_o = req_o.wait()
+        
+#         with open(local_parquet_path_c, 'wb') as f:
+#             f.write(file_bytes_c)
+#         with open(local_parquet_path_o, 'wb') as f:
+#             f.write(file_bytes_o)
+    
+#     # Load into local DuckDB
+#     if rank == 0:
+#         local_parquet_path_c = f'/tmp/customer_part_{rank}.parquet'
+#         local_parquet_path_o = f'/tmp/orders_part_{rank}.parquet'
+    
+#     con = duckdb.connect(local_db_path)
+#     con.execute("CREATE TABLE customer AS SELECT * FROM read_parquet(?)", (local_parquet_path_c,))
+#     con.execute("CREATE TABLE orders AS SELECT * FROM read_parquet(?)", (local_parquet_path_o,))
+    
+#     return con

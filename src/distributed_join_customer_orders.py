@@ -345,8 +345,8 @@ def main():
     # partition the customer table and the orders table
     partition_start_time = datetime.now()
     # conn = partition_and_distribute_customer_and_orders(comm, rank, size)
-    # conn = partition_utils.partition_and_distribute_customer_and_orders_streaming_parquet(comm, rank, size)
-    conn = partition_utils.partition_and_distribute_parquet(comm, rank, size, 'customer', 'orders', 'c_custkey', 'o_custkey')
+    conn = partition_utils.partition_and_distribute_customer_and_orders_streaming_parquet_mmap(comm, rank, size)
+    # conn = partition_utils.partition_and_distribute_parquet(comm, rank, size, 'customer', 'orders', 'c_custkey', 'o_custkey')
 
     # synchronize all processes after partitioning and distributing
     comm.Barrier()
