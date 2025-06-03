@@ -10,7 +10,6 @@ collection_time 0.098890
 
 
 4 nodes
-
 100
 total time: 1.694072
 partition time: 1.549526
