@@ -6,6 +6,7 @@
 
 ## To-Do
 - Compare file transfer methods (parquet, csv, raw tuple data line by line)
+- Maybe try putting the module load into the run_batch_jobs_seq at the beinning and remove from individual
 
 *Will remove older verisons of merge*
 

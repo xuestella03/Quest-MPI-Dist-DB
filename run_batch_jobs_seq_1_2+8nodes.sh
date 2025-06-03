@@ -1,4 +1,6 @@
 #!/bin/bash
+module load mamba/24.3.0
+module load mpi/openmpi-4.1.1
 
 # Submit 100 runs for 2-node jobs sequentially
 jobid=$(sbatch run_join_1_2nodes.sh | awk '{print $4}')

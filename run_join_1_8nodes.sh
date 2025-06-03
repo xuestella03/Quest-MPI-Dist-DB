@@ -15,13 +15,13 @@ echo "Job ID: $SLURM_JOB_ID"
 echo "Running on $SLURM_NNODES nodes with $SLURM_NTASKS total tasks"
 
 # load required modules
-module load mamba/24.3.0
-module load mpi/openmpi-4.1.1
+# module load mamba/24.3.0
+# module load mpi/openmpi-4.1.1
 
 # install duckdb and mpi4py if not already installed
 # pip install --user duckdb mpi4py
 
-echo "Successfully loaded modules and installed packages"
+# echo "Successfully loaded modules and installed packages"
 
 # Run the tpch file upload test
 # python3 -u src/generate_tpch.py
