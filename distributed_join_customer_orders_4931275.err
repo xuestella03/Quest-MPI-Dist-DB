@@ -1,0 +1,29 @@
+[qnode0159:1151023] mca_base_component_repository_open: unable to open mca_mtl_psm: libpsm_infinipath.so.1: cannot open shared object file: No such file or directory (ignored)
+[qnode0156:2656108] mca_base_component_repository_open: unable to open mca_mtl_psm: libpsm_infinipath.so.1: cannot open shared object file: No such file or directory (ignored)
+[qnode0157:126337] mca_base_component_repository_open: unable to open mca_mtl_psm: libpsm_infinipath.so.1: cannot open shared object file: No such file or directory (ignored)
+[qnode0158:3785548] mca_base_component_repository_open: unable to open mca_mtl_psm: libpsm_infinipath.so.1: cannot open shared object file: No such file or directory (ignored)
+Traceback (most recent call last):
+  File "/gpfs/home/exy4679/duckdb_test/src/distributed_join_customer_orders.py", line 263, in <module>
+    main()
+  File "/gpfs/home/exy4679/duckdb_test/src/distributed_join_customer_orders.py", line 257, in main
+    collect_results(comm, rank, size, local_results)
+  File "/gpfs/home/exy4679/duckdb_test/src/distributed_join_customer_orders.py", line 219, in collect_results
+    """, merged_results)
+UnboundLocalError: local variable 'merged_results' referenced before assignment
+Traceback (most recent call last):
+  File "/gpfs/home/exy4679/duckdb_test/src/distributed_join_customer_orders.py", line 263, in <module>
+    main()
+  File "/gpfs/home/exy4679/duckdb_test/src/distributed_join_customer_orders.py", line 257, in main
+    collect_results(comm, rank, size, local_results)
+  File "/gpfs/home/exy4679/duckdb_test/src/distributed_join_customer_orders.py", line 219, in collect_results
+    """, merged_results)
+UnboundLocalError: local variable 'merged_results' referenced before assignment
+Traceback (most recent call last):
+  File "/gpfs/home/exy4679/duckdb_test/src/distributed_join_customer_orders.py", line 263, in <module>
+    main()
+  File "/gpfs/home/exy4679/duckdb_test/src/distributed_join_customer_orders.py", line 257, in main
+    collect_results(comm, rank, size, local_results)
+  File "/gpfs/home/exy4679/duckdb_test/src/distributed_join_customer_orders.py", line 219, in collect_results
+    """, merged_results)
+UnboundLocalError: local variable 'merged_results' referenced before assignment
+slurmstepd: error: *** JOB 4931275 ON qnode0156 CANCELLED AT 2025-06-02T22:17:00 ***

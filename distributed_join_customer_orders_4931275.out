@@ -1,0 +1,31 @@
+Starting distributed join for customer and orders tables at Mon Jun  2 22:13:59 CDT 2025
+Running on 4 nodes with 4 total tasks
+Requirement already satisfied: duckdb in /gpfs/home/exy4679/.local/lib/python3.10/site-packages (1.3.0)
+Requirement already satisfied: mpi4py in /gpfs/home/exy4679/.local/lib/python3.10/site-packages (4.0.3)
+Successfully loaded modules and installed packages
+============================================================
+Distributed join customer and orders tables on 4 nodes
+============================================================
+Rank 0: Partitioning and distributing customer and orders Parquet files
+Rank 2: Receiving customer and orders Parquet files...
+Rank 3: Receiving customer and orders Parquet files...
+Rank 1: Receiving customer and orders Parquet files...
+Rank 0: Sent customer and orders partitions to rank 1
+Rank 1: Received and saved Parquet files
+Rank 0: Sent customer and orders partitions to rank 2
+Rank 2: Received and saved Parquet files
+Rank 0: Sent customer and orders partitions to rank 3
+Rank 3: Received and saved Parquet files
+Rank 0: Loaded 3750 customer and 37434 orders records into local DB
+Rank 2: Loaded 3750 customer and 37791 orders records into local DB
+Rank 3: Loaded 3750 customer and 37428 orders records into local DB
+Rank 1: Loaded 3750 customer and 37347 orders records into local DB
+Rank 2: Local join completed in 0:00:00.098477, found 37791 results
+	First 5 rows are [(13678, 'Customer#000013678', 4, datetime.date(1995, 10, 11), Decimal('53829.87')), (4450, 'Customer#000004450', 5, datetime.date(1994, 7, 30), Decimal('139660.54')), (3914, 'Customer#000003914', 7, datetime.date(1996, 1, 10), Decimal('231037.28')), (13006, 'Customer#000013006', 32, datetime.date(1995, 7, 16), Decimal('166802.63')), (5662, 'Customer#000005662', 67, datetime.date(1996, 12, 19), Decimal('167270.36'))]
+Rank 3: Local join completed in 0:00:00.099089, found 37428 results
+	First 5 rows are [(3691, 'Customer#000003691', 1, datetime.date(1996, 1, 2), Decimal('194029.55')), (5563, 'Customer#000005563', 6, datetime.date(1992, 2, 21), Decimal('65843.52')), (11527, 'Customer#000011527', 36, datetime.date(1995, 11, 3), Decimal('72196.43')), (1627, 'Customer#000001627', 65, datetime.date(1995, 3, 18), Decimal('99763.79')), (2855, 'Customer#000002855', 68, datetime.date(1998, 4, 18), Decimal('305815.83'))]
+Rank 0: Local join completed in 0:00:00.099760, found 37434 results
+	First 5 rows are [(12332, 'Customer#000012332', 3, datetime.date(1993, 10, 14), Decimal('247296.05')), (12760, 'Customer#000012760', 35, datetime.date(1995, 10, 23), Decimal('192885.43')), (8612, 'Customer#000008612', 37, datetime.date(1992, 6, 3), Decimal('156440.15')), (12484, 'Customer#000012484', 38, datetime.date(1996, 8, 21), Decimal('64695.26')), (3212, 'Customer#000003212', 64, datetime.date(1994, 7, 16), Decimal('30616.90'))]
+Rank 1: Local join completed in 0:00:00.100439, found 37347 results
+	First 5 rows are [(7801, 'Customer#000007801', 2, datetime.date(1996, 12, 1), Decimal('60951.63')), (6697, 'Customer#000006697', 33, datetime.date(1993, 10, 27), Decimal('118518.56')), (6101, 'Customer#000006101', 34, datetime.date(1998, 7, 21), Decimal('75662.77')), (8177, 'Customer#000008177', 39, datetime.date(1996, 9, 20), Decimal('307811.89')), (8449, 'Customer#000008449', 69, datetime.date(1994, 6, 4), Decimal('228015.94'))]
+Collecting and merging results...
