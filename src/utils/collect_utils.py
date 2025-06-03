@@ -32,10 +32,10 @@ def collect_results_parquet_streaming(comm, rank, size, conn):
     conn.execute(query)
     query_time = datetime.now() - start_time
     
-    print(f"Rank {rank}: Local join query completed in {query_time.total_seconds()}")
+    # print(f"Rank {rank}: Local join query completed in {query_time.total_seconds()}")
     
     if rank == 0:
-        print("Coordinator collecting Parquet files...")
+        # print("Coordinator collecting Parquet files...")
         start_time = datetime.now()
         
         # final db for complete join results
@@ -76,7 +76,7 @@ def collect_results_parquet_streaming(comm, rank, size, conn):
         
         collection_time = datetime.now() - start_time
         final_count = final_conn.execute("SELECT COUNT(*) FROM join_result").fetchone()[0]
-        print(f"Collection completed in {collection_time}, total records: {final_count}")
+        # print(f"Collection completed in {collection_time}, total records: {final_count}")
         
         final_conn.close()
         

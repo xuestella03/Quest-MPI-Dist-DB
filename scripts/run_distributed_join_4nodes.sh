@@ -26,6 +26,8 @@ echo "Successfully loaded modules and installed packages"
 # Run the tpch file upload test
 # python3 -u src/generate_tpch.py
 # echo "Finished uploading tpc-h file"
+
 mpirun -np $SLURM_NTASKS python -u src/distributed_join_customer_orders.py
+echo "job_id=$SLURM_JOB_ID"
 
 echo "Distributed join for customer and orders tables finished"

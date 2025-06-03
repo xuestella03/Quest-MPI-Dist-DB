@@ -28,7 +28,7 @@ def partition_and_distribute_customer_and_orders(comm, rank, size):
 
     if rank == 0:
         # Coordinator node
-        print("Rank 0: Partitioning and distributing customer and orders Parquet files")
+        # print("Rank 0: Partitioning and distributing customer and orders Parquet files")
 
         con = duckdb.connect(db_path)
 
@@ -57,13 +57,13 @@ def partition_and_distribute_customer_and_orders(comm, rank, size):
             with open(part_path_o, 'rb') as f:
                 comm.send(f.read(), dest=i, tag=101)
 
-            print(f"Rank 0: Sent customer and orders partitions to rank {i}")
+            # print(f"Rank 0: Sent customer and orders partitions to rank {i}")
 
         con.close()
 
     else:
         # Worker nodes receive Parquet files
-        print(f"Rank {rank}: Receiving customer and orders Parquet files...")
+        # print(f"Rank {rank}: Receiving customer and orders Parquet files...")
         file_bytes_c = comm.recv(source=0, tag=100)
         file_bytes_o = comm.recv(source=0, tag=101)
 
@@ -72,7 +72,7 @@ def partition_and_distribute_customer_and_orders(comm, rank, size):
         with open(local_parquet_path_o, 'wb') as f:
             f.write(file_bytes_o)
 
-        print(f"Rank {rank}: Received and saved Parquet files")
+        # print(f"Rank {rank}: Received and saved Parquet files")
 
     # Load into one local DuckDB file
     if rank == 0:
@@ -88,7 +88,7 @@ def partition_and_distribute_customer_and_orders(comm, rank, size):
     # Verify counts
     count_c = con.execute("SELECT COUNT(*) FROM customer").fetchone()[0]
     count_o = con.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
-    print(f"Rank {rank}: Loaded {count_c} customer and {count_o} orders records into local DB")
+    # print(f"Rank {rank}: Loaded {count_c} customer and {count_o} orders records into local DB")
 
     return con
 
@@ -114,8 +114,8 @@ def perform_local_join(rank, conn):
     results = conn.execute(query).fetchall()
     elapsed_time = datetime.now() - start_time 
 
-    print(f"Rank {rank}: Local join completed in {elapsed_time}, found {len(results)} results")
-    print(f"\tFirst 5 rows are {results[:5]}")
+    # print(f"Rank {rank}: Local join completed in {elapsed_time}, found {len(results)} results")
+    # print(f"\tFirst 5 rows are {results[:5]}")
     return results 
 
 
@@ -123,7 +123,7 @@ def collect_results(comm, rank, size, local_results):
     all_results = comm.gather(local_results, root=0)
 
     if rank == 0:
-        print("Collecting and merging results...")
+        # print("Collecting and merging results...")
 
         merged_results = []
         for result in all_results:
@@ -151,7 +151,7 @@ def collect_results(comm, rank, size, local_results):
         con.execute(f"""
             COPY join_result TO '{output_path}' (FORMAT 'parquet')
         """)
-        print(f"Saved merged results to {output_path}")
+        # print(f"Saved merged results to {output_path}")
 
         con.close()
 
@@ -221,90 +221,90 @@ def collect_results_optimized(comm, rank, size, local_results):
         # Send results to coordinator
         comm.send(local_results, dest=0, tag=200)
 
-def collect_results_parquet_streaming(comm, rank, size, conn):
-    """
-    Alternative approach: Stream Parquet files instead of raw data
-    This avoids Python object serialization overhead
-    """
-    # Each node writes its results to a temporary Parquet file
-    temp_parquet = f'/tmp/join_results_rank_{rank}.parquet'
+# def collect_results_parquet_streaming(comm, rank, size, conn):
+#     """
+#     Alternative approach: Stream Parquet files instead of raw data
+#     This avoids Python object serialization overhead
+#     """
+#     # Each node writes its results to a temporary Parquet file
+#     temp_parquet = f'/tmp/join_results_rank_{rank}.parquet'
     
-    query = f"""
-    COPY (
-        SELECT
-            c.c_custkey,
-            c.c_name,
-            o.o_orderkey,
-            o.o_orderdate,
-            o.o_totalprice
-        FROM customer c
-        JOIN orders o ON c.c_custkey = o.o_custkey
-    ) TO '{temp_parquet}' (FORMAT 'parquet')
-    """
+#     query = f"""
+#     COPY (
+#         SELECT
+#             c.c_custkey,
+#             c.c_name,
+#             o.o_orderkey,
+#             o.o_orderdate,
+#             o.o_totalprice
+#         FROM customer c
+#         JOIN orders o ON c.c_custkey = o.o_custkey
+#     ) TO '{temp_parquet}' (FORMAT 'parquet')
+#     """
     
-    start_time = datetime.now()
-    conn.execute(query)
-    query_time = datetime.now() - start_time
+#     start_time = datetime.now()
+#     conn.execute(query)
+#     query_time = datetime.now() - start_time
     
-    # Get file size for monitoring
-    file_size = os.path.getsize(temp_parquet) if os.path.exists(temp_parquet) else 0
-    print(f"Rank {rank}: Query completed in {query_time}, wrote {file_size} bytes")
+#     # Get file size for monitoring
+#     file_size = os.path.getsize(temp_parquet) if os.path.exists(temp_parquet) else 0
+#     print(f"Rank {rank}: Query completed in {query_time}, wrote {file_size} bytes")
     
-    if rank == 0:
-        print("Coordinator collecting Parquet files...")
-        start_time = datetime.now()
+#     if rank == 0:
+#         print("Coordinator collecting Parquet files...")
+#         start_time = datetime.now()
         
-        # Create final database
-        final_conn = duckdb.connect()
+#         # Create final database
+#         final_conn = duckdb.connect()
         
-        # Read coordinator's own file first
-        final_conn.execute(f"""
-            CREATE TABLE join_result AS 
-            SELECT * FROM read_parquet('{temp_parquet}' )
-        """)
+#         # Read coordinator's own file first
+#         final_conn.execute(f"""
+#             CREATE TABLE join_result AS 
+#             SELECT * FROM read_parquet('{temp_parquet}' )
+#         """)
         
-        # Collect Parquet files from other nodes
-        for source_rank in range(1, size):
-            print(f"Receiving Parquet from rank {source_rank}...")
+#         # Collect Parquet files from other nodes
+#         for source_rank in range(1, size):
+#             print(f"Receiving Parquet from rank {source_rank}...")
             
-            # Receive file bytes
-            file_bytes = comm.recv(source=source_rank, tag=300)
+#             # Receive file bytes
+#             file_bytes = comm.recv(source=source_rank, tag=300)
             
-            # Write to temporary file
-            remote_parquet = f'/tmp/join_results_from_rank_{source_rank}.parquet'
-            with open(remote_parquet, 'wb') as f:
-                f.write(file_bytes)
+#             # Write to temporary file
+#             remote_parquet = f'/tmp/join_results_from_rank_{source_rank}.parquet'
+#             with open(remote_parquet, 'wb') as f:
+#                 f.write(file_bytes)
             
-            # Append to main table using DuckDB's efficient Parquet reading
-            final_conn.execute(f"""
-                INSERT INTO join_result 
-                SELECT * FROM read_parquet('{remote_parquet}')
-            """)
+#             # Append to main table using DuckDB's efficient Parquet reading
+#             final_conn.execute(f"""
+#                 INSERT INTO join_result 
+#                 SELECT * FROM read_parquet('{remote_parquet}')
+#             """)
             
-            # Clean up temporary file
-            os.remove(remote_parquet)
+#             # Clean up temporary file
+#             os.remove(remote_parquet)
         
-        # Export final result
-        output_path = 'data/joined_results.parquet'
-        final_conn.execute(f"""
-            COPY join_result TO '{output_path}' (FORMAT 'parquet')
-        """)
+#         # Export final result
+#         output_path = 'data/joined_results.parquet'
+#         final_conn.execute(f"""
+#             COPY join_result TO '{output_path}' (FORMAT 'parquet')
+#         """)
         
-        elapsed_time = datetime.now() - start_time
-        final_count = final_conn.execute("SELECT COUNT(*) FROM join_result").fetchone()[0]
-        print(f"Collection completed in {elapsed_time}, total records: {final_count}")
+#         elapsed_time = datetime.now() - start_time
+#         final_count = final_conn.execute("SELECT COUNT(*) FROM join_result").fetchone()[0]
+#         print(f"Collection completed in {elapsed_time}, total records: {final_count}")
         
-        final_conn.close()
+#         final_conn.close()
         
-    else:
-        # Send Parquet file to coordinator
-        with open(temp_parquet, 'rb') as f:
-            file_bytes = f.read()
-        comm.send(file_bytes, dest=0, tag=300)
+#     else:
+#         # Send Parquet file to coordinator
+#         with open(temp_parquet, 'rb') as f:
+#             file_bytes = f.read()
+#         comm.send(file_bytes, dest=0, tag=300)
     
-    # Clean up local temporary file
-    if os.path.exists(temp_parquet):
-        os.remove(temp_parquet)
+#     # Clean up local temporary file
+#     if os.path.exists(temp_parquet):
+#         os.remove(temp_parquet)
 
 def cleanup(rank):
     """
@@ -361,16 +361,25 @@ def main():
     
     local_join_time, collection_time = collect_utils.collect_results_parquet_streaming(comm, rank, size, conn)
     collection_time_2 = datetime.now() - collection_start_time
+    
+
+    # find the max local_join_time across nodes
+    max_local_join_time = comm.reduce(local_join_time, op=MPI.MAX, root=0)
+
+
     # cleanup
     cleanup(rank)
 
     total_time = datetime.now() - total_start_time 
     if rank == 0:
-        print(f"Total execution time: {total_time.total_seconds()} seconds")
-        print(f"Partitioning time: {partition_time.total_seconds()} seconds")
-        print(f"Local join time: {local_join_time.total_seconds()} seconds")
-        print(f"Collection time: {collection_time.total_seconds()} seconds")
+        print(f"total_time: {total_time.total_seconds()} seconds")
+        print(f"partition_time: {partition_time.total_seconds()} seconds")
+        print(f"max_local_join_time: {max_local_join_time.total_seconds()} seconds")
+        print(f"collection_time: {collection_time.total_seconds()} seconds")
         print(f"Collection time 2: {collection_time_2.total_seconds()} seconds")
+
+        # print(f"RESULT: total_time={total_time.total_seconds()} partition_time={partition_time.total_seconds()} local_join_time={join_time.total_seconds()} collection_time={collection_time.total_seconds()}")
+
 
 if __name__ == "__main__":
     main()
