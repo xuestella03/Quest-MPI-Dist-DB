@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=distributed_join_customer_orders
 #SBATCH --account=e32695
-#SBATCH --nodes=2
+#SBATCH --nodes=6
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G

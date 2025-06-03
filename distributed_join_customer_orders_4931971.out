@@ -1,0 +1,59 @@
+Starting distributed join for customer and orders tables at Mon Jun  2 23:47:25 CDT 2025
+Running on 8 nodes with 8 total tasks
+Requirement already satisfied: duckdb in /gpfs/home/exy4679/.local/lib/python3.10/site-packages (1.3.0)
+Requirement already satisfied: mpi4py in /gpfs/home/exy4679/.local/lib/python3.10/site-packages (4.0.3)
+Successfully loaded modules and installed packages
+Rank 4: Receiving customer and orders Parquet files...
+Rank 5: Receiving customer and orders Parquet files...
+Rank 7: Receiving customer and orders Parquet files...
+Rank 2: Receiving customer and orders Parquet files...
+Rank 1: Receiving customer and orders Parquet files...
+Rank 6: Receiving customer and orders Parquet files...
+============================================================
+Distributed join customer and orders tables on 8 nodes
+============================================================
+Rank 0: Partitioning and distributing customer and orders Parquet files
+Rank 3: Receiving customer and orders Parquet files...
+Rank 0: Sent customer and orders partitions to rank 1
+Rank 1: Received and saved Parquet files
+Rank 0: Sent customer and orders partitions to rank 2
+Rank 2: Received and saved Parquet files
+Rank 0: Sent customer and orders partitions to rank 3
+Rank 3: Received and saved Parquet files
+Rank 0: Sent customer and orders partitions to rank 4
+Rank 4: Received and saved Parquet files
+Rank 5: Received and saved Parquet files
+Rank 0: Sent customer and orders partitions to rank 5
+Rank 0: Sent customer and orders partitions to rank 6
+Rank 6: Received and saved Parquet files
+Rank 4: Loaded 1875 customer and 18713 orders records into local DB
+Rank 0: Sent customer and orders partitions to rank 7
+Rank 7: Received and saved Parquet files
+Rank 5: Loaded 1875 customer and 18570 orders records into local DB
+Rank 3: Loaded 1875 customer and 18612 orders records into local DB
+Rank 2: Loaded 1875 customer and 18587 orders records into local DB
+Rank 1: Loaded 1875 customer and 18777 orders records into local DB
+Rank 0: Loaded 1875 customer and 18721 orders records into local DB
+Rank 6: Loaded 1875 customer and 19204 orders records into local DB
+Rank 7: Loaded 1875 customer and 18816 orders records into local DB
+Rank 4: Query completed in 0:00:00.005284, wrote 292856 bytes
+Rank 6: Query completed in 0:00:00.005733, wrote 299800 bytes
+Rank 5: Query completed in 0:00:00.006147, wrote 290349 bytes
+Rank 2: Query completed in 0:00:00.006748, wrote 290546 bytes
+Rank 3: Query completed in 0:00:00.006768, wrote 290676 bytes
+Rank 1: Query completed in 0:00:00.007556, wrote 293476 bytes
+Rank 0: Query completed in 0:00:00.009804, wrote 292875 bytes
+Coordinator collecting Parquet files...
+Rank 7: Query completed in 0:00:00.014010, wrote 293920 bytes
+Receiving Parquet from rank 1...
+Receiving Parquet from rank 2...
+Receiving Parquet from rank 3...
+Receiving Parquet from rank 4...
+Receiving Parquet from rank 5...
+Receiving Parquet from rank 6...
+Receiving Parquet from rank 7...
+Collection completed in 0:00:00.154878, total records: 150000
+Total execution time: 2.214432 seconds
+Partitioning time: 2.045411 seconds
+Collection time: 0.168467 seconds
+Distributed join for customer and orders tables finished at 
