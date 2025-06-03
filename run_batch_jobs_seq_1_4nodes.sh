@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Submit the first job
+jobid=$(sbatch run_join_1_4nodes.sh | awk '{print $4}')
+echo "Submitted job 1 with ID $jobid"
+
+# Submit the remaining 99 jobs, each depending on the one before it
+for i in {2..100}; do
+    jobid=$(sbatch --dependency=afterok:$jobid run_join_1_4nodes.sh | awk '{print $4}')
+    echo "Submitted job $i with ID $jobid"
+done

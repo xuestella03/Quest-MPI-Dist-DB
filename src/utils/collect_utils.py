@@ -5,10 +5,11 @@ import time
 import sys
 from datetime import datetime
 
-def collect_results_parquet_streaming(comm, rank, size, conn):
+def collect_results_parquet_streaming_1(comm, rank, size, conn):
     """
     Stream Parquet files instead of raw data
     This avoids Python object serialization overhead
+    For query 1 (customer and orders)
     """
 
     collection_time = 0
@@ -49,7 +50,7 @@ def collect_results_parquet_streaming(comm, rank, size, conn):
         
         # Collect Parquet files from other nodes
         for source_rank in range(1, size):
-            print(f"Receiving Parquet from rank {source_rank}...")
+            # print(f"Receiving Parquet from rank {source_rank}...")
             
             # receive file bytes
             file_bytes = comm.recv(source=source_rank, tag=300)

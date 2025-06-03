@@ -359,7 +359,7 @@ def main():
     # collect_results_optimized(comm, rank, size, local_results)
     # collect_results_parquet_streaming(comm, rank, size, conn)
     
-    local_join_time, collection_time = collect_utils.collect_results_parquet_streaming(comm, rank, size, conn)
+    local_join_time, collection_time = collect_utils.collect_results_parquet_streaming_1(comm, rank, size, conn)
     collection_time_2 = datetime.now() - collection_start_time
     
 

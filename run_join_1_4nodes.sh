@@ -7,8 +7,8 @@
 #SBATCH --mem=4G
 #SBATCH --time=00:20:00
 #SBATCH --partition=short
-#SBATCH --output=distributed_join_customer_orders_%j.out
-#SBATCH --error=distributed_join_customer_orders_%j.err
+#SBATCH --output=join_1_4nodes_%j.out
+#SBATCH --error=join_1_4nodes_%j.err
 
 echo "Starting distributed join for customer and orders tables"
 echo "Job ID: $SLURM_JOB_ID"

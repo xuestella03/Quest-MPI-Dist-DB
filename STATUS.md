@@ -5,10 +5,11 @@
 
 
 ## To-Do
-- Try to track local join time (adding in each node and gather?)
-- Clean up print statements
-- Remove pip install
 - Compare file transfer methods (parquet, csv, raw tuple data line by line)
-- Use pandas to collect results
 
 *Will remove older verisons of merge*
+
+
+## Notes
+run_join_1_4nodes.sh means run query 1 (orders and customers) on 4 nodes
+run_batch_jobs_1_4nodes.sh means run the above 100 times
