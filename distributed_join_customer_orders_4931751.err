@@ -1,0 +1,3 @@
+[qnode0009:503395] mca_base_component_repository_open: unable to open mca_mtl_psm: libpsm_infinipath.so.1: cannot open shared object file: No such file or directory (ignored)
+[qnode0008:1425218] mca_base_component_repository_open: unable to open mca_mtl_psm: libpsm_infinipath.so.1: cannot open shared object file: No such file or directory (ignored)
+/var/spool/slurmd/job4931751/slurm_script: line 30: data: command not found

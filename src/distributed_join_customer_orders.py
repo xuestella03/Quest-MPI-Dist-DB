@@ -154,6 +154,157 @@ def collect_results(comm, rank, size, local_results):
 
         con.close()
 
+def collect_results_optimized(comm, rank, size, local_results):
+    """
+    Optimized collection phase with multiple strategies for better performance
+    """
+    if rank == 0:
+        print("Starting optimized collection phase...")
+        start_time = datetime.now()
+    
+    # Strategy 1: Use reduce instead of gather to avoid memory bottleneck
+    # Only collect counts first to estimate total size
+    local_count = len(local_results)
+    total_count = comm.reduce(local_count, op=MPI.SUM, root=0)
+    
+    if rank == 0:
+        print(f"Total records to collect: {total_count}")
+    
+    # Strategy 2: Stream results instead of collecting all at once
+    if rank == 0:
+        # Initialize output file directly
+        output_path = 'data/joined_results.parquet'
+        con = duckdb.connect()
+        
+        con.execute("""
+            CREATE TABLE join_result (
+                c_custkey INTEGER,
+                c_name TEXT,
+                o_orderkey INTEGER,
+                o_orderdate DATE,
+                o_totalprice DOUBLE
+            )
+        """)
+        
+        # Insert coordinator's own results first
+        if local_results:
+            con.executemany("""
+                INSERT INTO join_result VALUES (?, ?, ?, ?, ?)
+            """, local_results)
+        
+        # Receive and process results from other nodes one by one
+        for source_rank in range(1, size):
+            print(f"Receiving results from rank {source_rank}...")
+            remote_results = comm.recv(source=source_rank, tag=200)
+            
+            if remote_results:
+                # Insert in batches to avoid memory issues
+                batch_size = 10000
+                for i in range(0, len(remote_results), batch_size):
+                    batch = remote_results[i:i + batch_size]
+                    con.executemany("""
+                        INSERT INTO join_result VALUES (?, ?, ?, ?, ?)
+                    """, batch)
+        
+        # Write to Parquet file
+        con.execute(f"""
+            COPY join_result TO '{output_path}' (FORMAT 'parquet')
+        """)
+        
+        elapsed_time = datetime.now() - start_time
+        print(f"Collection completed in {elapsed_time}")
+        print(f"Saved merged results to {output_path}")
+        con.close()
+        
+    else:
+        # Send results to coordinator
+        comm.send(local_results, dest=0, tag=200)
+
+def collect_results_parquet_streaming(comm, rank, size, conn):
+    """
+    Alternative approach: Stream Parquet files instead of raw data
+    This avoids Python object serialization overhead
+    """
+    # Each node writes its results to a temporary Parquet file
+    temp_parquet = f'/tmp/join_results_rank_{rank}.parquet'
+    
+    query = f"""
+    COPY (
+        SELECT
+            c.c_custkey,
+            c.c_name,
+            o.o_orderkey,
+            o.o_orderdate,
+            o.o_totalprice
+        FROM customer c
+        JOIN orders o ON c.c_custkey = o.o_custkey
+    ) TO '{temp_parquet}' (FORMAT 'parquet')
+    """
+    
+    start_time = datetime.now()
+    conn.execute(query)
+    query_time = datetime.now() - start_time
+    
+    # Get file size for monitoring
+    file_size = os.path.getsize(temp_parquet) if os.path.exists(temp_parquet) else 0
+    print(f"Rank {rank}: Query completed in {query_time}, wrote {file_size} bytes")
+    
+    if rank == 0:
+        print("Coordinator collecting Parquet files...")
+        start_time = datetime.now()
+        
+        # Create final database
+        final_conn = duckdb.connect()
+        
+        # Read coordinator's own file first
+        final_conn.execute(f"""
+            CREATE TABLE join_result AS 
+            SELECT * FROM read_parquet('{temp_parquet}' )
+        """)
+        
+        # Collect Parquet files from other nodes
+        for source_rank in range(1, size):
+            print(f"Receiving Parquet from rank {source_rank}...")
+            
+            # Receive file bytes
+            file_bytes = comm.recv(source=source_rank, tag=300)
+            
+            # Write to temporary file
+            remote_parquet = f'/tmp/join_results_from_rank_{source_rank}.parquet'
+            with open(remote_parquet, 'wb') as f:
+                f.write(file_bytes)
+            
+            # Append to main table using DuckDB's efficient Parquet reading
+            final_conn.execute(f"""
+                INSERT INTO join_result 
+                SELECT * FROM read_parquet('{remote_parquet}')
+            """)
+            
+            # Clean up temporary file
+            os.remove(remote_parquet)
+        
+        # Export final result
+        output_path = 'data/joined_results.parquet'
+        final_conn.execute(f"""
+            COPY join_result TO '{output_path}' (FORMAT 'parquet')
+        """)
+        
+        elapsed_time = datetime.now() - start_time
+        final_count = final_conn.execute("SELECT COUNT(*) FROM join_result").fetchone()[0]
+        print(f"Collection completed in {elapsed_time}, total records: {final_count}")
+        
+        final_conn.close()
+        
+    else:
+        # Send Parquet file to coordinator
+        with open(temp_parquet, 'rb') as f:
+            file_bytes = f.read()
+        comm.send(file_bytes, dest=0, tag=300)
+    
+    # Clean up local temporary file
+    if os.path.exists(temp_parquet):
+        os.remove(temp_parquet)
+
 def cleanup(rank):
     """
     Clean up temporary files (local db? join intermediate results)
@@ -195,14 +346,16 @@ def main():
     comm.Barrier()
     partition_time = datetime.now() - partition_start_time 
 
-    # perform local join
-    local_join_start_time = datetime.now()
-    local_results = perform_local_join(rank, conn)
-    local_join_time = datetime.now() - local_join_start_time
+    # perform local join (built into parquet streaming)
+    # local_join_start_time = datetime.now()
+    # local_results = perform_local_join(rank, conn)
+    # local_join_time = datetime.now() - local_join_start_time
 
     # collect results
     collection_start_time = datetime.now()
-    collect_results(comm, rank, size, local_results)
+    # collect_results(comm, rank, size, local_results)
+    # collect_results_optimized(comm, rank, size, local_results)
+    collect_results_parquet_streaming(comm, rank, size, conn)
     collection_time = datetime.now() - collection_start_time
 
     # cleanup
@@ -212,7 +365,7 @@ def main():
     if rank == 0:
         print(f"Total execution time: {total_time.total_seconds()} seconds")
         print(f"Partitioning time: {partition_time.total_seconds()} seconds")
-        print(f"Local join time: {local_join_time.total_seconds()} seconds")
+        # print(f"Local join time: {local_join_time.total_seconds()} seconds")
         print(f"Collection time: {collection_time.total_seconds()} seconds")
 
 if __name__ == "__main__":

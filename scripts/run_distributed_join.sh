@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=distributed_join_customer_orders
 #SBATCH --account=e32695
-#SBATCH --nodes=4
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
@@ -22,6 +22,9 @@ pip install --user duckdb mpi4py
 
 echo "Successfully loaded modules and installed packages"
 
+# Run the tpch file upload test
+# python3 -u src/generate_tpch.py
+# echo "Finished uploading tpc-h file"
 mpirun -np $SLURM_NTASKS python -u src/distributed_join_customer_orders.py
 
 echo "Distributed join for customer and orders tables finished at $(data)"

@@ -28,7 +28,7 @@ echo "Successfully installed packages"
 
 
 # Run the tpch file upload test
-# python3 -u src/generate_tpch.py
+python3 -u src/generate_tpch.py
 # python3 -u src/test_duckdb_partition.py
 mpirun -np $SLURM_NTASKS python -u src/test_duckdb_partition.py
 

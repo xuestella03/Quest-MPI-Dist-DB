@@ -1,0 +1,25 @@
+Starting distributed join for customer and orders tables at Mon Jun  2 22:50:12 CDT 2025
+Running on 2 nodes with 2 total tasks
+Requirement already satisfied: duckdb in /gpfs/home/exy4679/.local/lib/python3.10/site-packages (1.3.0)
+Requirement already satisfied: mpi4py in /gpfs/home/exy4679/.local/lib/python3.10/site-packages (4.0.3)
+Successfully loaded modules and installed packages
+============================================================
+Distributed join customer and orders tables on 2 nodes
+============================================================
+Rank 0: Partitioning and distributing customer and orders Parquet files
+Rank 1: Receiving customer and orders Parquet files...
+Rank 0: Sent customer and orders partitions to rank 1
+Rank 1: Received and saved Parquet files
+Rank 0: Loaded 3750 customer and 37434 orders records into local DB
+Rank 1: Loaded 3750 customer and 37347 orders records into local DB
+Rank 1: Local join completed in 0:00:00.103531, found 37347 results
+	First 5 rows are [(7801, 'Customer#000007801', 2, datetime.date(1996, 12, 1), Decimal('60951.63')), (6697, 'Customer#000006697', 33, datetime.date(1993, 10, 27), Decimal('118518.56')), (6101, 'Customer#000006101', 34, datetime.date(1998, 7, 21), Decimal('75662.77')), (8177, 'Customer#000008177', 39, datetime.date(1996, 9, 20), Decimal('307811.89')), (8449, 'Customer#000008449', 69, datetime.date(1994, 6, 4), Decimal('228015.94'))]
+Rank 0: Local join completed in 0:00:00.115171, found 37434 results
+	First 5 rows are [(12332, 'Customer#000012332', 3, datetime.date(1993, 10, 14), Decimal('247296.05')), (12760, 'Customer#000012760', 35, datetime.date(1995, 10, 23), Decimal('192885.43')), (8612, 'Customer#000008612', 37, datetime.date(1992, 6, 3), Decimal('156440.15')), (12484, 'Customer#000012484', 38, datetime.date(1996, 8, 21), Decimal('64695.26')), (3212, 'Customer#000003212', 64, datetime.date(1994, 7, 16), Decimal('30616.90'))]
+Collecting and merging results...
+Saved merged results to data/joined_results.parquet
+Total execution time: 122.956853 seconds
+Partitioning time: 0.806995 seconds
+Local join time: 0.115595 seconds
+Collection time: 122.033412 seconds
+Distributed join for customer and orders tables finished at 

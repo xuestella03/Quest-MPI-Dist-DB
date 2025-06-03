@@ -1,0 +1,4 @@
+- Biggest performance bottleneck is communication between nodes. Need to optimize:
+    - Partioning time
+    - Collection time (compare 4 implementations of this??)
+- If code is not parallelized, one core on each node is better. 
