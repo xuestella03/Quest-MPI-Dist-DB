@@ -154,8 +154,8 @@ def partition_and_distribute_customer_and_orders(comm, rank, size):
 
     con = duckdb.connect(local_db_path)
 
-    con.execute("CREATE TABLE customer AS SELECT * FROM read_parquet(?)", (local_parquet_path_c,))
-    con.execute("CREATE TABLE orders AS SELECT * FROM read_parquet(?)", (local_parquet_path_o,))
+    con.execute("CREATE TABLE IF NOT EXISTS customer AS SELECT * FROM read_parquet(?)", (local_parquet_path_c,))
+    con.execute("CREATE TABLE IF NOT EXISTS orders AS SELECT * FROM read_parquet(?)", (local_parquet_path_o,))
 
     # Verify counts
     count_c = con.execute("SELECT COUNT(*) FROM customer").fetchone()[0]
