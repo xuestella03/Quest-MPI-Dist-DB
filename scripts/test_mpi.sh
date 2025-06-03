@@ -15,12 +15,14 @@ echo "Running on $SLURM_NNODES nodes with $SLURM_NTASKS total tasks"
 
 # Load required modules
 #module load python/anaconda3
+module load mamba/24.3.0
 module load mpi/openmpi-4.1.1
 
 # Install required packages if not already installed
-#pip install --user duckdb mpi4py
+pip install --user duckdb mpi4py
+echo "Successfully installed packages"
 
 # Run the MPI test
-mpirun -np $SLURM_NTASKS python src/test_duckdb_mpi.py
+mpirun -np $SLURM_NTASKS python -u src/test_duckdb_mpi.py
 
 echo "MPI test completed at $(date)"

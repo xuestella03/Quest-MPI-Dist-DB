@@ -1,0 +1,33 @@
+Starting DuckDB partition test at Mon Jun  2 20:58:05 CDT 2025
+Running on 3 nodes with 3 total tasks
+Loaded modules
+Python version: Python 3.10.14
+Requirement already satisfied: duckdb in /gpfs/home/exy4679/.local/lib/python3.10/site-packages (1.3.0)
+Requirement already satisfied: mpi4py in /gpfs/home/exy4679/.local/lib/python3.10/site-packages (4.0.3)
+Successfully installed packages
+Rank 1: Waiting to receive Parquet file...
+Rank 2: Waiting to receive Parquet file...
+============================================================
+DuckDB + MPI Partitioning Test on 3 nodes
+============================================================
+Rank 0: Partitioning and distributing into Parquet files
+Rank 0: Sent partition 1 to rank 1
+Rank 1: Received and wrote Parquet file.
+Rank 2: Received and wrote Parquet file.
+Rank 0: Sent partition 2 to rank 2
+Rank 0: Loaded 5000 customer records into local DuckDB.
+Finished partitioning and distributing; displaying first 3 of each node
+First 3 customer keys for rank 0: 3, 6, 9
+Rank 1: Loaded 5000 customer records into local DuckDB.
+Rank 2: Loaded 5000 customer records into local DuckDB.
+Finished partitioning and distributing; displaying first 3 of each node
+First 3 customer keys for rank 1: 1, 4, 7
+Finished partitioning and distributing; displaying first 3 of each node
+First 3 customer keys for rank 2: 2, 5, 8
+
+Test: Customer data partitioning show keys
+----------------------------------------
+First 3 customer keys for rank 0: 3, 6, 9
+First 3 customer keys for rank 1: 1, 4, 7
+First 3 customer keys for rank 2: 2, 5, 8
+Partition test completed at Mon Jun  2 20:58:55 CDT 2025
