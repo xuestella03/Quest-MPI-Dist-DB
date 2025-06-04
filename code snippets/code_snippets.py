@@ -341,3 +341,14 @@ def partition_and_distribute_customer_and_orders_streaming_parquet(comm, rank, s
     con.execute("CREATE TABLE orders AS SELECT * FROM read_parquet(?)", (local_parquet_path_o,))
 
     return con
+
+
+###### Local join
+
+def perform_local_join(rank, conn):
+    start_time = datetime.now()
+    query = "SELECT * FROM customer c JOIN orders o ON c.c_custkey = o.o_custkey"
+    results = conn.execute(query).fetchall()
+    elapsed_time = datetime.now() - start_time 
+
+    return results 
