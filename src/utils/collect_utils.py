@@ -92,3 +92,87 @@ def collect_results_parquet_streaming_1(comm, rank, size, conn):
         os.remove(temp_parquet)
 
     return query_time, collection_time
+
+
+def collect_results_csv_streaming_1(comm, rank, size, conn):
+
+    collection_time = 0
+    # each node writes local join results to a temporary Parquet file
+    temp_csv = f'/tmp/join_results_rank_{rank}.csv'
+    
+    query = f"""
+    COPY (
+        SELECT
+            c.c_custkey,
+            c.c_name,
+            o.o_orderkey,
+            o.o_orderdate,
+            o.o_totalprice
+        FROM customer c
+        JOIN orders o ON c.c_custkey = o.o_custkey
+    ) TO '{temp_csv}' (HEADER, DELIMITER ',')
+    """
+    
+    start_time = datetime.now()
+    conn.execute(query)
+    query_time = datetime.now() - start_time
+    
+    # print(f"Rank {rank}: Local join query completed in {query_time.total_seconds()}")
+    
+    if rank == 0:
+        # print("Coordinator collecting Parquet files...")
+        start_time = datetime.now()
+        
+        # final db for complete join results
+        final_conn = duckdb.connect()
+        
+        # read coordinator's own file first
+        final_conn.execute(f"""
+            CREATE TABLE join_result AS 
+            SELECT * FROM '{temp_csv}'
+        """)
+        
+        # Collect Parquet files from other nodes
+        for source_rank in range(1, size):
+            # print(f"Receiving Parquet from rank {source_rank}...")
+            
+            # receive file bytes
+            file_bytes = comm.recv(source=source_rank, tag=300)
+            
+            # write the bytes to a temporary parquet file
+            remote_csv = f'/tmp/join_results_from_rank_{source_rank}.csv'
+            with open(remote_csv, 'wb') as f:
+                f.write(file_bytes)
+            
+            # append to main table using duckdb parquet
+            final_conn.execute(f"""
+                INSERT INTO join_result 
+                SELECT * FROM '{remote_csv}'
+            """)
+            
+            # clean up temporary file
+            os.remove(remote_csv)
+        
+        # export final result
+        output_path = 'data/joined_results.csv'
+        final_conn.execute(f"""
+            COPY join_result TO '{output_path}' (HEADER, DELIMITER ',')
+        """)
+        
+        collection_time = datetime.now() - start_time
+        final_count = final_conn.execute("SELECT COUNT(*) FROM join_result").fetchone()[0]
+        # print(f"Collection completed in {collection_time}, total records: {final_count}")
+        
+        final_conn.close()
+        
+    else:
+        # Send Parquet file to coordinator
+        with open(temp_csv, 'rb') as f:
+            file_bytes = f.read()
+        comm.send(file_bytes, dest=0, tag=300)
+    
+    # Clean up local temporary file
+    if os.path.exists(temp_csv):
+        os.remove(temp_csv)
+
+    return query_time, collection_time
