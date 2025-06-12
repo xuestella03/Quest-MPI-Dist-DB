@@ -348,39 +348,24 @@ def main():
 
     # partition the customer table and the orders table
     partition_start_time = datetime.now()
-    # conn = partition_and_distribute_customer_and_orders(comm, rank, size)
 
-
-    # conn = partition_utils.partition_and_distribute_customer_and_orders_streaming_parquet_mmap(comm, rank, size)
     conn, partition_fn_time = partition_utils.partition_and_distribute_streaming_parquet(comm, rank, size, 'customer', 'orders', 
                                               'c_custkey', 'o_custkey',
                                               db_path='data/coordinator/full_data/whole_tpch_0.1.duckdb')
     
-    # conn = partition_utils.partition_and_distribute_parquet(comm, rank, size, 'customer', 'orders', 'c_custkey', 'o_custkey')
-    # conn = partition_utils.partition_and_distribute_1_multiprocessing(comm, rank, size)
 
     # synchronize all processes after partitioning and distributing
     comm.Barrier()
     partition_time = datetime.now() - partition_start_time 
 
-    # perform local join (built into parquet streaming)
-    # local_join_start_time = datetime.now()
-    # local_results = perform_local_join(rank, conn)
-    # local_join_time = datetime.now() - local_join_start_time
-
     # collect results
     collection_start_time = datetime.now()
-    # collect_results(comm, rank, size, local_results)
-    # collect_results_optimized(comm, rank, size, local_results)
-    # collect_results_parquet_streaming(comm, rank, size, conn)
     
     local_join_time, collection_time = collect_utils.collect_results_parquet_streaming_1(comm, rank, size, conn)
     collection_time_2 = datetime.now() - collection_start_time
     
-
     # find the max local_join_time across nodes
     max_local_join_time = comm.reduce(local_join_time, op=MPI.MAX, root=0)
-
 
     # cleanup
     cleanup(rank)
@@ -393,9 +378,6 @@ def main():
         print(f"max_local_join_time: {max_local_join_time.total_seconds()} seconds")
         print(f"collection_time: {collection_time.total_seconds()} seconds")
         print(f"Collection time 2: {collection_time_2.total_seconds()} seconds")
-
-        # print(f"RESULT: total_time={total_time.total_seconds()} partition_time={partition_time.total_seconds()} local_join_time={join_time.total_seconds()} collection_time={collection_time.total_seconds()}")
-
 
 if __name__ == "__main__":
     main()
