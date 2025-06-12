@@ -4,7 +4,7 @@
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=4G
+#SBATCH --mem=6G
 #SBATCH --time=00:20:00
 #SBATCH --partition=short
 #SBATCH --output=join_1_2nodes_%j.out

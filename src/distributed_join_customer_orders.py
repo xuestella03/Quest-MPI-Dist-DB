@@ -349,7 +349,13 @@ def main():
     # partition the customer table and the orders table
     partition_start_time = datetime.now()
     # conn = partition_and_distribute_customer_and_orders(comm, rank, size)
-    conn = partition_utils.partition_and_distribute_customer_and_orders_streaming_parquet(comm, rank, size)
+
+
+    # conn = partition_utils.partition_and_distribute_customer_and_orders_streaming_parquet_mmap(comm, rank, size)
+    conn, partition_fn_time = partition_utils.partition_and_distribute_streaming_parquet(comm, rank, size, 'customer', 'orders', 
+                                              'c_custkey', 'o_custkey',
+                                              db_path='data/coordinator/full_data/whole_tpch_0.1.duckdb')
+    
     # conn = partition_utils.partition_and_distribute_parquet(comm, rank, size, 'customer', 'orders', 'c_custkey', 'o_custkey')
     # conn = partition_utils.partition_and_distribute_1_multiprocessing(comm, rank, size)
 
@@ -383,6 +389,7 @@ def main():
     if rank == 0:
         print(f"total_time: {total_time.total_seconds()} seconds")
         print(f"partition_time: {partition_time.total_seconds()} seconds")
+        # print(f"partition_fn_time: {partition_fn_time.total_seconds()} seconds")
         print(f"max_local_join_time: {max_local_join_time.total_seconds()} seconds")
         print(f"collection_time: {collection_time.total_seconds()} seconds")
         print(f"Collection time 2: {collection_time_2.total_seconds()} seconds")
