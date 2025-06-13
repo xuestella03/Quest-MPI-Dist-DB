@@ -63,7 +63,7 @@ def main():
     # synchronize all processes after partitioning and distributing
     # comm.Barrier()
     local_partition_time = datetime.now() - partition_start_time 
-    max_partition_time = comm.reduce(local_partition_time, op=MPI.MAX, root=0)
+   
 
     # collect results
 
@@ -82,23 +82,27 @@ def main():
     # local_join_time, collection_time = collect_utils.collect_results_parquet_streaming_1(comm, rank, size, conn)
     local_join_time, collection_time = collect_utils.collect_results_streaming_parquet(
                                        comm, rank, size, conn, query1, 'customer_orders_results.parquet')
-    collection_time_2 = datetime.now() - collection_start_time
+    # collection_time_2 = datetime.now() - collection_start_time
     
+    total_time = datetime.now() - total_start_time 
     # find the max local_join_time across nodes
+    max_partition_time = comm.reduce(local_partition_time, op=MPI.MAX, root=0)
     max_local_join_time = comm.reduce(local_join_time, op=MPI.MAX, root=0)
 
+    
     # cleanup
     cleanup(rank)
 
-    total_time = datetime.now() - total_start_time 
+    # total_time = datetime.now() - total_start_time 
     if rank == 0:
         print(f"total_time: {total_time.total_seconds()} seconds")
         print(f"max_partition_phase_time: {max_partition_time.total_seconds()} seconds")
+        print(f"partition_time: {local_partition_time.total_seconds()} seconds")
         print(f"coord_partition_time: {partition_fn_times['partitioning_time']} seconds")
         print(f"partition_communication_time: {partition_fn_times['communication_time']} seconds")
         print(f"max_local_join_time: {max_local_join_time.total_seconds()} seconds")
         print(f"collection_time: {collection_time.total_seconds()} seconds")
-        print(f"Collection time 2: {collection_time_2.total_seconds()} seconds")
+        # print(f"Collection time 2: {collection_time_2.total_seconds()} seconds")
 
 if __name__ == "__main__":
     main()

@@ -40,7 +40,7 @@ def collect_results_streaming_parquet(comm, rank, size, conn, query, output_file
    
     if rank == 0:
         # print("Coordinator collecting Parquet files...")
-        start_time = datetime.now()
+        # start_time = datetime.now()
        
         # Final db for complete query results
         final_conn = duckdb.connect()
@@ -51,6 +51,7 @@ def collect_results_streaming_parquet(comm, rank, size, conn, query, output_file
             SELECT * FROM read_parquet('{temp_parquet}')
         """)
        
+        start_time = datetime.now()
         # Collect Parquet files from other nodes
         for source_rank in range(1, size):
             # print(f"Receiving Parquet from rank {source_rank}...")
