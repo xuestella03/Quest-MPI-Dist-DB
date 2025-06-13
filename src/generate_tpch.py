@@ -5,14 +5,14 @@ import duckdb
 
 # Create output directory
 os.makedirs('data/coordinator/full_data', exist_ok=True)
-con = duckdb.connect("data/coordinator/full_data/whole_tpch_5.duckdb")
+con = duckdb.connect("data/coordinator/full_data/whole_tpch_1.duckdb")
 
 # Install and load TPC-H extension
 con.execute("INSTALL tpch")
 con.execute("LOAD tpch")
 
 # Generate the data
-con.execute("CALL dbgen(sf=5)")
+con.execute("CALL dbgen(sf=1)")
 
 # Show results
 tables = con.execute("SHOW TABLES").fetchall()

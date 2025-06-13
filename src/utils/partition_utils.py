@@ -45,56 +45,56 @@ def partition_and_distribute_streaming_parquet(comm, rank, size, table1_name, ta
         con = duckdb.connect(db_path, read_only=True)
         pending_reqs = []
 
-        con.execute("BEGIN TRANSACTION")
+        # con.execute("BEGIN TRANSACTION")
+        # for i in range(size):
+        #     part_path_1 = f'/tmp/{table1_name}_part_{i}.parquet'
+        #     part_path_2 = f'/tmp/{table2_name}_part_{i}.parquet'
+            
+        #     con.execute(f"COPY (SELECT * FROM {table1_name} WHERE {table1_partition_key} % {size} = {i}) TO '{part_path_1}' (FORMAT 'parquet')")
+        #     con.execute(f"COPY (SELECT * FROM {table2_name} WHERE {table2_partition_key} % {size} = {i}) TO '{part_path_2}' (FORMAT 'parquet')")
+        # con.execute("COMMIT")
+        
         for i in range(size):
             part_path_1 = f'/tmp/{table1_name}_part_{i}.parquet'
             part_path_2 = f'/tmp/{table2_name}_part_{i}.parquet'
             
-            con.execute(f"COPY (SELECT * FROM {table1_name} WHERE {table1_partition_key} % {size} = {i}) TO '{part_path_1}' (FORMAT 'parquet')")
-            con.execute(f"COPY (SELECT * FROM {table2_name} WHERE {table2_partition_key} % {size} = {i}) TO '{part_path_2}' (FORMAT 'parquet')")
-        con.execute("COMMIT")
-        
-        for i in range(1, size):
-            # part_path_1 = f'/tmp/{table1_name}_part_{i}.parquet'
-            # part_path_2 = f'/tmp/{table2_name}_part_{i}.parquet'
+            # Partition first table
+            con.execute(f"""
+                COPY (
+                    SELECT * FROM {table1_name} WHERE {table1_partition_key} % {size} = {i}
+                ) TO '{part_path_1}' (FORMAT 'parquet')
+            """)
             
-            # # Partition first table
-            # con.execute(f"""
-            #     COPY (
-            #         SELECT * FROM {table1_name} WHERE {table1_partition_key} % {size} = {i}
-            #     ) TO '{part_path_1}' (FORMAT 'parquet')
-            # """)
-            
-            # # Partition second table
-            # con.execute(f"""
-            #     COPY (
-            #         SELECT * FROM {table2_name} WHERE {table2_partition_key} % {size} = {i}
-            #     ) TO '{part_path_2}' (FORMAT 'parquet')
-            # """)
+            # Partition second table
+            con.execute(f"""
+                COPY (
+                    SELECT * FROM {table2_name} WHERE {table2_partition_key} % {size} = {i}
+                ) TO '{part_path_2}' (FORMAT 'parquet')
+            """)
             
             
-
-            # Read partition files
-            with open(part_path_1, 'rb') as f1, open(part_path_2, 'rb') as f2:
-                file_bytes_1 = f1.read()
-                file_bytes_2 = f2.read()
+            if i != 0:
+                # Read partition files
+                with open(part_path_1, 'rb') as f1, open(part_path_2, 'rb') as f2:
+                    file_bytes_1 = f1.read()
+                    file_bytes_2 = f2.read()
+                    
+                # Send sizes first
+                size_1 = len(file_bytes_1)
+                size_2 = len(file_bytes_2)
+                req_size_1 = comm.isend(size_1, dest=i, tag=200)
+                req_size_2 = comm.isend(size_2, dest=i, tag=201)
                 
-            # Send sizes first
-            size_1 = len(file_bytes_1)
-            size_2 = len(file_bytes_2)
-            req_size_1 = comm.isend(size_1, dest=i, tag=200)
-            req_size_2 = comm.isend(size_2, dest=i, tag=201)
-            
-            # Send actual data
-            req_data_1 = comm.Isend([file_bytes_1, MPI.BYTE], dest=i, tag=100)
-            req_data_2 = comm.Isend([file_bytes_2, MPI.BYTE], dest=i, tag=101)
-            
-            pending_reqs.extend([req_size_1, req_size_2, req_data_1, req_data_2])
-            
-            # Clean up partition files for non-rank-0 nodes
+                # Send actual data
+                req_data_1 = comm.Isend([file_bytes_1, MPI.BYTE], dest=i, tag=100)
+                req_data_2 = comm.Isend([file_bytes_2, MPI.BYTE], dest=i, tag=101)
+                
+                pending_reqs.extend([req_size_1, req_size_2, req_data_1, req_data_2])
+                
+                # Clean up partition files for non-rank-0 nodes
 
-            os.remove(part_path_1)
-            os.remove(part_path_2)
+                os.remove(part_path_1)
+                os.remove(part_path_2)
         
         # finished partitioning; record time
         times['partitioning_time'] = (datetime.now() - partitioning_start_time).total_seconds()
