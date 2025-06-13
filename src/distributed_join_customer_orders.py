@@ -55,14 +55,15 @@ def main():
     # partition the customer table and the orders table
     partition_start_time = datetime.now()
 
-    conn, partition_fn_time = partition_utils.partition_and_distribute_streaming_parquet(comm, rank, size, 'customer', 'orders', 
+    conn, partition_fn_times = partition_utils.partition_and_distribute_streaming_parquet(comm, rank, size, 'customer', 'orders', 
                                               'c_custkey', 'o_custkey',
                                               db_path='data/coordinator/full_data/whole_tpch_0.1.duckdb')
     
 
     # synchronize all processes after partitioning and distributing
-    comm.Barrier()
-    partition_time = datetime.now() - partition_start_time 
+    # comm.Barrier()
+    local_partition_time = datetime.now() - partition_start_time 
+    max_partition_time = comm.reduce(local_partition_time, op=MPI.MAX, root=0)
 
     # collect results
 
@@ -92,8 +93,9 @@ def main():
     total_time = datetime.now() - total_start_time 
     if rank == 0:
         print(f"total_time: {total_time.total_seconds()} seconds")
-        print(f"partition_time: {partition_time.total_seconds()} seconds")
-        # print(f"partition_fn_time: {partition_fn_time.total_seconds()} seconds")
+        print(f"max_partition_phase_time: {max_partition_time.total_seconds()} seconds")
+        print(f"coord_partition_time: {partition_fn_times['partitioning_time']} seconds")
+        print(f"partition_communication_time: {partition_fn_times['communication_time']} seconds")
         print(f"max_local_join_time: {max_local_join_time.total_seconds()} seconds")
         print(f"collection_time: {collection_time.total_seconds()} seconds")
         print(f"Collection time 2: {collection_time_2.total_seconds()} seconds")
