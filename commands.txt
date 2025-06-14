@@ -3,7 +3,7 @@ module load mamba/24.3.0
 pip install --user duckdb 
 
 To run the file directly (no connection to distributed)
-python2 src/test_duckdb_basic.py
+python3 file.py
 
 To run the script 
 sbatch scripts/test_basic.sh
@@ -12,7 +12,7 @@ To check job status
 checkjob <jobid>
 
 To view queue
-squeue <net_id>
+squeue -u <net_id>
 
 To cancel job
 scancel -u <net_id>

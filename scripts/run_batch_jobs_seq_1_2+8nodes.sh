@@ -13,14 +13,6 @@ for i in {2..11}; do
     echo "Submitted 8-node job $i with ID $jobid"
 done
 
-# # Submit 100 runs for 8-node jobs sequentially AFTER 2-node jobs complete
-# jobid=$(sbatch --dependency=afterok:$jobid run_join_1_3nodes.sh | awk '{print $4}')
-# echo "Submitted 3-node job 1 with ID $jobid"
-
-# for i in {2..50}; do
-#     jobid=$(sbatch --dependency=afterok:$jobid run_join_1_3nodes.sh | awk '{print $4}')
-#     echo "Submitted 3-node job $i with ID $jobid"
-# done
 
 # Submit 100 runs for 8-node jobs sequentially AFTER 2-node jobs complete
 jobid=$(sbatch --dependency=afterok:$jobid run_join_1_1node.sh | awk '{print $4}')

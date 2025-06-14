@@ -38,34 +38,26 @@ def partition_and_distribute_streaming_parquet(comm, rank, size, table1_name, ta
     times = {
         'partitioning_time': 0,
         'communication_time': 0,
+        'local_db_time': 0
     }
     
     if rank == 0:
         partitioning_start_time = datetime.now()
         con = duckdb.connect(db_path, read_only=True)
         pending_reqs = []
-
-        # con.execute("BEGIN TRANSACTION")
-        # for i in range(size):
-        #     part_path_1 = f'/tmp/{table1_name}_part_{i}.parquet'
-        #     part_path_2 = f'/tmp/{table2_name}_part_{i}.parquet'
-            
-        #     con.execute(f"COPY (SELECT * FROM {table1_name} WHERE {table1_partition_key} % {size} = {i}) TO '{part_path_1}' (FORMAT 'parquet')")
-        #     con.execute(f"COPY (SELECT * FROM {table2_name} WHERE {table2_partition_key} % {size} = {i}) TO '{part_path_2}' (FORMAT 'parquet')")
-        # con.execute("COMMIT")
         
         for i in range(size):
             part_path_1 = f'/tmp/{table1_name}_part_{i}.parquet'
             part_path_2 = f'/tmp/{table2_name}_part_{i}.parquet'
             
-            # Partition first table
+            # partition first table
             con.execute(f"""
                 COPY (
                     SELECT * FROM {table1_name} WHERE {table1_partition_key} % {size} = {i}
                 ) TO '{part_path_1}' (FORMAT 'parquet')
             """)
             
-            # Partition second table
+            # partition second table
             con.execute(f"""
                 COPY (
                     SELECT * FROM {table2_name} WHERE {table2_partition_key} % {size} = {i}
@@ -74,24 +66,24 @@ def partition_and_distribute_streaming_parquet(comm, rank, size, table1_name, ta
             
             
             if i != 0:
-                # Read partition files
+                # read partition files
                 with open(part_path_1, 'rb') as f1, open(part_path_2, 'rb') as f2:
                     file_bytes_1 = f1.read()
                     file_bytes_2 = f2.read()
                     
-                # Send sizes first
+                # send sizes first
                 size_1 = len(file_bytes_1)
                 size_2 = len(file_bytes_2)
                 req_size_1 = comm.isend(size_1, dest=i, tag=200)
                 req_size_2 = comm.isend(size_2, dest=i, tag=201)
                 
-                # Send actual data
+                # send actual data
                 req_data_1 = comm.Isend([file_bytes_1, MPI.BYTE], dest=i, tag=100)
                 req_data_2 = comm.Isend([file_bytes_2, MPI.BYTE], dest=i, tag=101)
                 
                 pending_reqs.extend([req_size_1, req_size_2, req_data_1, req_data_2])
                 
-                # Clean up partition files for non-rank-0 nodes
+                # clean up partition files for non-rank-0 nodes
 
                 os.remove(part_path_1)
                 os.remove(part_path_2)
@@ -99,36 +91,37 @@ def partition_and_distribute_streaming_parquet(comm, rank, size, table1_name, ta
         # finished partitioning; record time
         times['partitioning_time'] = (datetime.now() - partitioning_start_time).total_seconds()
 
-        # Wait for all async sends to complete
+        # wait for all async sends to complete
         communication_start_time = datetime.now()
         MPI.Request.Waitall(pending_reqs)
         con.close()
         times['communication_time'] = (datetime.now() - communication_start_time).total_seconds()
         
     else:
-        # Receive sizes first
+        # receive sizes first
         req_size_1 = comm.irecv(source=0, tag=200)
         req_size_2 = comm.irecv(source=0, tag=201)
         size_1 = req_size_1.wait()
         size_2 = req_size_2.wait()
         
-        # Allocate buffers
+        # allocate buffers
         file_bytes_1 = bytearray(size_1)
         file_bytes_2 = bytearray(size_2)
         
-        # Receive actual data
+        # receive actual data
         req_data_1 = comm.Irecv([file_bytes_1, MPI.BYTE], source=0, tag=100)
         req_data_2 = comm.Irecv([file_bytes_2, MPI.BYTE], source=0, tag=101)
         req_data_1.Wait()
         req_data_2.Wait()
         
-        # Write received data to local parquet files
+        # write received data to local parquet files
         with open(local_parquet_path_1, 'wb') as f:
             f.write(file_bytes_1)
         with open(local_parquet_path_2, 'wb') as f:
             f.write(file_bytes_2)
     
-    # Load partitioned data into local DuckDB
+    local_db_start = datetime.now()
+    # load partitioned data into local DuckDB
     if rank == 0:
         local_parquet_path_1 = f'/tmp/{table1_name}_part_{rank}.parquet'
         local_parquet_path_2 = f'/tmp/{table2_name}_part_{rank}.parquet'
@@ -138,5 +131,6 @@ def partition_and_distribute_streaming_parquet(comm, rank, size, table1_name, ta
     con.execute(f"DROP TABLE IF EXISTS {table2_name}")
     con.execute(f"CREATE TABLE {table1_name} AS SELECT * FROM read_parquet(?)", (local_parquet_path_1,))
     con.execute(f"CREATE TABLE {table2_name} AS SELECT * FROM read_parquet(?)", (local_parquet_path_2,))
-
+    times['local_db_time'] = (datetime.now() - local_db_start).total_seconds()
+    
     return con, times

@@ -40,7 +40,7 @@ def cleanup(rank):
 
 def main():
 
-    # Initialize MPI
+    # initialize MPI
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -59,9 +59,6 @@ def main():
                                               'c_custkey', 'o_custkey',
                                               db_path='data/coordinator/full_data/whole_tpch_0.1.duckdb')
     
-
-    # synchronize all processes after partitioning and distributing
-    # comm.Barrier()
     local_partition_time = datetime.now() - partition_start_time 
    
 
@@ -79,12 +76,12 @@ def main():
     """
     collection_start_time = datetime.now()
     
-    # local_join_time, collection_time = collect_utils.collect_results_parquet_streaming_1(comm, rank, size, conn)
+   
     local_join_time, collection_time = collect_utils.collect_results_streaming_parquet(
                                        comm, rank, size, conn, query1, 'customer_orders_results.parquet')
-    # collection_time_2 = datetime.now() - collection_start_time
     
     total_time = datetime.now() - total_start_time 
+
     # find the max local_join_time across nodes
     max_partition_time = comm.reduce(local_partition_time, op=MPI.MAX, root=0)
     max_local_join_time = comm.reduce(local_join_time, op=MPI.MAX, root=0)
@@ -95,6 +92,7 @@ def main():
 
     # total_time = datetime.now() - total_start_time 
     if rank == 0:
+        print(f"partition_local_db_time: {partition_fn_times['local_db_time']} seconds")
         print(f"total_time: {total_time.total_seconds()} seconds")
         print(f"max_partition_phase_time: {max_partition_time.total_seconds()} seconds")
         print(f"partition_time: {local_partition_time.total_seconds()} seconds")

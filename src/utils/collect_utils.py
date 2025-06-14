@@ -22,10 +22,10 @@ def collect_results_streaming_parquet(comm, rank, size, conn, query, output_file
         tuple: (query_time, collection_time)
     """
     collection_time = 0
-    # Each node writes local query results to a temporary Parquet file
+    # each node writes local query results to a temporary Parquet file
     temp_parquet = f'/tmp/query_results_rank_{rank}.parquet'
    
-    # Wrap the provided query in a COPY statement to export to Parquet
+    # wrap the query in a COPY statement to export to Parquet
     copy_query = f"""
     COPY (
         {query.strip().rstrip(';')}
@@ -42,38 +42,38 @@ def collect_results_streaming_parquet(comm, rank, size, conn, query, output_file
         # print("Coordinator collecting Parquet files...")
         # start_time = datetime.now()
        
-        # Final db for complete query results
+        # final db for complete query results
         final_conn = duckdb.connect()
        
-        # Read coordinator's own file first
+        # read coordinator's own file first
         final_conn.execute(f"""
             CREATE TABLE query_result AS
             SELECT * FROM read_parquet('{temp_parquet}')
         """)
        
         start_time = datetime.now()
-        # Collect Parquet files from other nodes
+        # collect Parquet files from other nodes
         for source_rank in range(1, size):
             # print(f"Receiving Parquet from rank {source_rank}...")
            
-            # Receive file bytes
+            # receive file bytes
             file_bytes = comm.recv(source=source_rank, tag=300)
            
-            # Write the bytes to a temporary parquet file
+            # write the bytes to a temporary parquet file
             remote_parquet = f'/tmp/query_results_from_rank_{source_rank}.parquet'
             with open(remote_parquet, 'wb') as f:
                 f.write(file_bytes)
            
-            # Append to main table using DuckDB parquet reader
+            # append to main table using DuckDB parquet reader
             final_conn.execute(f"""
                 INSERT INTO query_result
                 SELECT * FROM read_parquet('{remote_parquet}')
             """)
            
-            # Clean up temporary file
+            # clean up temporary file
             os.remove(remote_parquet)
        
-        # Export final result
+        # export final result
         output_path = f'data/{output_filename}'
         final_conn.execute(f"""
             COPY query_result TO '{output_path}' (FORMAT 'parquet')
@@ -86,12 +86,12 @@ def collect_results_streaming_parquet(comm, rank, size, conn, query, output_file
         final_conn.close()
        
     else:
-        # Send Parquet file to coordinator
+        # send Parquet file to coordinator
         with open(temp_parquet, 'rb') as f:
             file_bytes = f.read()
         comm.send(file_bytes, dest=0, tag=300)
    
-    # Clean up local temporary file
+    # clean up local temporary file
     if os.path.exists(temp_parquet):
         os.remove(temp_parquet)
         
@@ -180,7 +180,7 @@ def collect_results_parquet_streaming_1(comm, rank, size, conn):
             file_bytes = f.read()
         comm.send(file_bytes, dest=0, tag=300)
     
-    # Clean up local temporary file
+    # clean up local temporary file
     if os.path.exists(temp_parquet):
         os.remove(temp_parquet)
 
