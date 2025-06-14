@@ -57,7 +57,7 @@ def main():
 
     conn, partition_fn_times = partition_utils.partition_and_distribute_streaming_parquet(comm, rank, size, 'customer', 'orders', 
                                               'c_custkey', 'o_custkey',
-                                              db_path='data/coordinator/full_data/whole_tpch_0.5.duckdb')
+                                              db_path='data/coordinator/full_data/whole_tpch_0.1.duckdb')
     
 
     # synchronize all processes after partitioning and distributing
